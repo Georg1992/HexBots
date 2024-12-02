@@ -3,10 +3,16 @@
 SetWorkingDir %A_ScriptDir%
 
 global AHI := new AutoHotInterception()
-global mouseId := AHI.GetMouseID(0x09DA, 0x9090)
-global keyboardId := AHI.GetKeyboardID(0x0B05, 0x194B)
+global mouseId := AHI.GetMouseID(0x1532, 0x0067)
+global keyboardId := AHI.GetKeyboardID(0x0B05, 0x19B6)
 global breakLoop := false
 global clicks :=0
+
+global ws:=550  ;width and height 
+global hs:=450  ;of search area 
+
+global xs:=a_screenwidth//2 - ws//2
+global ys:=a_screenheight//2 - hs//2
 
 
 BuffTimer:
@@ -56,11 +62,16 @@ MoveToTheMap() {
 Hunt() {
 	
 	Loop {
+			
+		if (DetectCAPTCHA()) {
+            breakLoop := true
+            return
+        }
 		if (breakLoop) {
 				break
 			}
 			
-		PixelSearch x, y, 0, 0, A_ScreenWidth, A_ScreenHeight, 0xCD9CAC, 1, Fast RGB
+		PixelSearch, x, y, xs, ys, xs+ws, ys+hs, 0xCD9CAC, 1, Fast RGB
 
 		if (ErrorLevel = 0) {
 			MouseMove x, y
@@ -78,7 +89,7 @@ Hunt() {
 			}
 			}
 			else if (ErrorLevel = 1) {
-				PixelSearch x, y, 0, 0, A_ScreenWidth, A_ScreenHeight, 0xFDE2B0, 1, Fast RGB
+				PixelSearch, x, y, xs, ys, xs+ws, ys+hs, 0xFDE2B0, 1, Fast RGB
 				if(ErrorLevel = 0)
 				{
 					MouseMove x, y
@@ -97,6 +108,19 @@ Hunt() {
 		}
 
 	}
+	
+DetectCAPTCHA() {
+    global xs, ys, ws, hs
+    PixelSearch, x, y, xs, ys, xs + ws, ys + hs, 0xC40909, 1, Fast RGB 
+    if (ErrorLevel = 0) {
+        ; CAPTCHA detected
+        SoundBeep, 750, 500 ; Frequency: 750 Hz, Duration: 500 ms
+        MsgBox, CAPTCHA suka!
+        Pause, On 
+        return true
+    }
+    return false
+}
 
 
 F12::
@@ -106,6 +130,7 @@ F12::
 		AHI.SendKeyEvent(keyboardId, 61, 1)
 		sleep 50
 		AHI.SendKeyEvent(keyboardId, 61, 0)
+		sleep 500
 		MoveToTheMap()
 		breakLoop := false 
 		SetTimer, BuffTimer, Off ; Stop the timer if running
@@ -114,5 +139,7 @@ F12::
 	}
 }
 return
+
+^p::Pause
 
 F11:: ExitApp
