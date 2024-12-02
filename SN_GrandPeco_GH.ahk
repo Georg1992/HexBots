@@ -1,10 +1,11 @@
 #Persistent
 #include Lib\AutoHotInterception.ahk
+#include OriginalMobColors.ahk
 SetWorkingDir %A_ScriptDir%
 
 global AHI := new AutoHotInterception()
-global mouseId := AHI.GetMouseID(0x1532, 0x0067)
-global keyboardId := AHI.GetKeyboardID(0x0B05, 0x19B6)
+global mouseId := AHI.GetMouseID(0x09DA, 0x9090)
+global keyboardId := AHI.GetKeyboardID(0x0B05, 0x194B)
 global breakLoop := false
 global clicks :=0
 
@@ -71,7 +72,7 @@ Hunt() {
 				break
 			}
 			
-		PixelSearch, x, y, xs, ys, xs+ws, ys+hs, 0xCD9CAC, 1, Fast RGB
+		PixelSearch, x, y, xs, ys, xs+ws, ys+hs, GrandPeco, 1, Fast RGB
 
 		if (ErrorLevel = 0) {
 			MouseMove x, y
