@@ -16,8 +16,29 @@ global xs:=a_screenwidth//2 - ws//2
 global ys:=a_screenheight//2 - hs//2
 
 
-BuffTimer:
+;MAIN
+F12::
 {
+	
+	Loop {
+		AHI.SendKeyEvent(keyboardId, 61, 1)
+		sleep 50
+		AHI.SendKeyEvent(keyboardId, 61, 0)
+		sleep 500
+		MoveToTheMap()
+		breakLoop := false 
+		SetTimer, BuffTimer, Off ; Stop the timer if running
+		SetTimer, BuffTimer, 238000 ; Restart the timer for 4 minutes
+		Hunt()
+	}
+}
+return
+
+
+
+;SUBROUTINES
+
+BuffTimer:
 	x := (A_ScreenWidth // 2)
 	y := (A_ScreenHeight // 2)
 	mousemove, x, y
@@ -29,7 +50,11 @@ BuffTimer:
 	Send {Alt up}
 	wingcount := 0
 	sleep 1500
-}
+return
+
+
+
+;FUNCTIONS
 
 Teleport(){
 	AHI.SendKeyEvent(keyboardId, 59, 1)
@@ -123,23 +148,6 @@ DetectCAPTCHA() {
     return false
 }
 
-
-F12::
-{
-	
-	Loop {
-		AHI.SendKeyEvent(keyboardId, 61, 1)
-		sleep 50
-		AHI.SendKeyEvent(keyboardId, 61, 0)
-		sleep 500
-		MoveToTheMap()
-		breakLoop := false 
-		SetTimer, BuffTimer, Off ; Stop the timer if running
-		SetTimer, BuffTimer, 238000 ; Restart the timer for 4 minutes
-		Hunt()
-	}
-}
-return
 
 ^p::Pause
 
