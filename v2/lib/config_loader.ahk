@@ -1,6 +1,6 @@
-﻿#Include ../lib/JSON.ahk
+﻿#Include %A_LineFile%/../JSON.ahk
 
-class ClientConfig {
+class ConfigLoader {
     __config := null
     
     __New(configPath) {

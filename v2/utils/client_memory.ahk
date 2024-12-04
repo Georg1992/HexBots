@@ -1,10 +1,5 @@
-#include ../lib/class_memory.ahk
-#include ../utils/client_config.ahk
-
-
-StrToHex(hexStr) {
-    return Format("0x{:X}", hexStr)
-}
+#include %A_LineFile%/../../lib/class_memory.ahk
+#include %A_LineFile%/../../lib/formatter.ahk
 
 class Character {
     __clientMemory := null
@@ -62,28 +57,4 @@ class Client {
         return this.__character
     }
 }
-
-;
-; Usage
-;
-
-config := new ClientConfig("config/client.json").Get()
-global client := new Client(config)
-global character := client.GetCharacter()
-
-End::
-    Loop {
-        MsgBox % character.currentSp
-        Sleep, 1000
-    }
-    
-    Return
-
-F1::
-    character.StartBackgroundUpdate()
-    Return
-  
-F2::
-    character.StopBackgroundUpdate()
-    Return
     
