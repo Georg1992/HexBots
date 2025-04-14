@@ -1,44 +1,135 @@
 SendMode Input
+CoordMode, Mouse, Screen
 
-etc_img := "images\etc_img.bmp"
-use_img := "images\use_img.bmp"
-close_img := "images\close_img.bmp"
-cell1_img := "images\cell1_img.bmp"
+global etc_img := "images\etc_img.bmp"
+global eqp_img := "images\eqp_img.bmp"
+global use_img := "images\use_img.bmp"
+global close_img := "images\close_img.bmp"
+global cell1_img := "images\cell1_img.bmp"
+global flywing_img := "images\wing_img.bmp"
+global ok_img := "images\ok_img.bmp"
+global empty_cell_img := "images\empty_cell_img.bmp"
 
+global cellSize = 50
+global wingcount := 0
 
-StartBot(targetColor){
-    IniRead, skillSC, config.ini, Keys, Skill, 0
-    IniRead, teleportSC, config.ini, Keys, Teleport, 0
-    IniRead, savepointSC, config.ini, Keys, SavePoint, 0
-    IniRead, SPItemSC, config.ini, Keys, SPItem, 0
+; Game variables
+global maxSp := 0
+global currentSp := 0
+global currentWeight := 0
+global totalWeight := 0
+global currentLocation := 0
 
-    ; Read search range from config or pass it from GUI
-    IniRead, searchRange, config.ini, Settings, SearchRange, 16 ; Default to 16 if not found
+StartBot(){
+    InitializeMemoryOperations()
+    totalWeight := ReadMemoryUInt(gameProcess,totalWeightAddress)
+    ; Wait until critical variables are initialized
+    checkcount := 0
+    while ((currentLocation == 0 || maxSp == 0 || totalWeight == 0) && checkcount <= 10) { ; Wait max 10 checks
+        Sleep 100
+        checkcount++
+    }
 
-    Hunt(targetColor,skillSC,teleportSC,searchRange)
+    if (currentLocation == 0 || totalWeight == 0 || maxSp == 0) {
+        MsgBox % "Failed to initialize game variables!`n"
+        return false
+    }
 
+    ZoomOut() 
+    skillSC := GetKeySC(SkillButtonKey) + 0
+    teleportSC := GetKeySC(TeleportButtonKey) + 0
+    sleep 500
+    while(botRunning) {
+        if (!botRunning || botPaused) ; Double-check flag
+            break
+        currentLocation := ReadMemoryUInt(gameProcess,currentLocationAddress)
+        if(warperCoordsSet && (currentLocation == warperLocation)){ 
+            MoveToTheMap(warperX, warperY)
+        } 
+        if(currentLocation != warperLocation){
+            Hunt(skillSC, teleportSC) 
+        }
+        iterations++
+    }
 }
 
-Hunt(targetColor,skillSC,teleportSC,searchRange) {
-    cellSize := 50 ;aproximately 50pixels
-    ; Calculate search window size
-    ws := searchRange * cellSize
-    hs := searchRange * cellSize
-
-    ; Calculate screen position (centered)
+Hunt(skillSC, teleportSC) {
+    lastWarpTime := 0
+    ws := SearchRange * cellSize
+    hs := SearchRange * cellSize
     xs := A_ScreenWidth // 2 - ws // 2
     ys := A_ScreenHeight // 2 - hs // 2 
-    Loop {
-        PixelSearch, x, y, xs, ys, xs + ws, ys + hs, targetColor, 1, Fast RGB
+    ; Settings
+    attackCount := 2 ; Number of skill uses per monster
+    if (lastWarpTime == 0){
+        lastWarpTime := A_TickCount
+    }
 
-        if (ErrorLevel = 0) {
-            MouseMove x, y
-            SkillClick(skillSC)
-            sleep 100
+
+    while(botRunning && !botPaused) {
+        if (warperCoordsSet && SavePointButtonKey != "" && (A_TickCount - lastWarpTime) >= (TimeOnLocation * 1000)) {
+            WarpToSavePoint()
+            lastWarpTime := A_TickCount  ; Reset timer
+            Sleep 2000 ; Brief pause after warp
+            break  ; Restart hunting loop
         }
-        else if (ErrorLevel = 1) {
+
+        if (WeightModifier >= 50 && currentWeight >= (totalWeight * WeightModifier / 100)) {
+            ItemsToStorage()
+        }
+
+        if(wingcount <= 0 && TakeFlyWings){
+            GetFlyWings()
+        }
+
+        PixelSearch, firstX, firstY, xs, ys, xs + ws, ys + hs, targetColor, 1, Fast RGB
+        if (ErrorLevel) {
+            ; No monsters found - teleport immediately
             Teleport(teleportSC)
+            continue
         }
+
+        ; Monster found - attack it
+        MouseMove, firstX, firstY
+        Loop %attackCount% {
+            SkillClick(skillSC)
+            Sleep, SkillDelay
+        }
+
+        ; Now search for other monsters while ignoring this one
+        ignoreX := firstX - 30
+        ignoreY := firstY - 30
+        ignoreW := 60
+        ignoreH := 120
+
+        PixelSearch, otherX, otherY, xs, ys, xs + ws, ys + hs, targetColor, 1, Fast RGB
+        while (!ErrorLevel) {
+            ; Check if this monster is outside our ignore area
+            if (otherX < ignoreX 
+                || otherX > ignoreX + ignoreW
+            || otherY < ignoreY 
+            || otherY > ignoreY + ignoreH) 
+            {
+                ; Attack the new monster twice
+                MouseMove, otherX, otherY
+                Loop %attackCount% {
+                    SkillClick(skillSC)
+                    Sleep, SkillDelay
+                }
+
+                ; Update ignore area to include this monster
+                ignoreX := Min(ignoreX, otherX - 30)
+                ignoreY := Min(ignoreY, otherY - 30)
+                ignoreW := Max(ignoreX + ignoreW, otherX + 30) - ignoreX
+                ignoreH := Max(ignoreY + ignoreH, otherY + 60) - ignoreY
+            }
+
+            ; Search next monster (skip already checked area)
+            PixelSearch, otherX, otherY, otherX + 10, otherY, xs + ws, ys + hs, targetColor, 1, Fast RGB
+        }
+
+        ; No more monsters found - teleport
+        Teleport(teleportSC)
     }
 }
 
@@ -46,58 +137,71 @@ Teleport(teleportSC){
     AHI.SendKeyEvent(keyboardId, teleportSC, 1)
     sleep 50
     AHI.SendKeyEvent(keyboardId, teleportSC, 0)
-    sleep 1000
+    sleep 800
+    if(TakeFlyWings){
+        wingcount--
+    }
 }
 
-MoveToTheMap() {
-    x := (A_ScreenWidth // 2)
-    y := (A_ScreenHeight // 2)
-
-    mousemove, x, y
-    Sleep 200
-    MouseGetPos, PosX, PosY
-    mousemove, x + 125, y - 220
+MoveToTheMap(posX, posY) {
+    mousemove, posX, posY
     Sleep 500
     AHI.SendMouseButtonEvent(mouseId, 0, 1)
     sleep 50
     AHI.SendMouseButtonEvent(mouseId, 0, 0)
     Sleep 500
     Send {Enter}
+    
     Sleep 1500
 }
 
-VKafru(){
+WarpToSavePoint() {
+    SendKeyCombo(SavePointButtonKey)
+    Sleep 2000  ; Wait for warp to complete
+}
 
-    Send {Alt down}
-    Send e
-    Send {Alt up}
-    sleep 500
-    MoveCursorToImage(use_img,0,0)
-    Sleep 100
-    click
-
-    MoveCursorToImage(cell1_img,0,20)
-
-    Send {Alt down}
-    Send 6
-    Send {Alt up}
-
-    AltClicks(5)
+GetFlyWings() {
+    if !SendKeyCombo(OpenStorageButtonKey) {
+        return false
+    }
+    Sleep 800
+    MoveCursorToImage(flywing_img,0,0)
     sleep 50
-    MoveCursorToImage(etc_img,0,0)
-    click
+    AHI.SendMouseButtonEvent(mouseId, 0, 1)
     sleep 100
-    MoveCursorToImage(cell1_img,0,20)
-    AltClicks(5)
+    ManageInventoryWindow()
     sleep 100
-    MoveCursorToImage(close_img,0,0)
-    sleep 100
-    click
-    Send {Alt down}
-    Send e
-    Send {Alt up}
-    sleep 500
+    MoveCursorToImage(etc_img,100,20)
+    AHI.SendMouseButtonEvent(mouseId, 0, 0)
+    sleep 200
+    send %wingsTaken%
+    sleep 200
+    SendInput {Enter}
 
+    ManageInventoryWindow()
+    MoveCursorToImage(close_img,0,0)
+    sleep 200
+    AHI.SendMouseButtonEvent(mouseId, 0, 1)
+    sleep 50
+    AHI.SendMouseButtonEvent(mouseId, 0, 0)
+    wingcount := wingsTaken
+    sleep 200
+}
+
+ManageInventoryWindow(){
+    action := "open"
+    if(action = "close"){
+        ImageSearch, FoundX, FoundY, 0, 0, A_ScreenWidth, A_ScreenHeight, etc_img
+
+    }
+    AHI.SendKeyEvent(keyboardId, 56, 1)
+    sleep 50
+    AHI.SendKeyEvent(keyboardId, 18, 1)
+    sleep 50
+    AHI.SendKeyEvent(keyboardId, 18, 0)
+    sleep 50
+    AHI.SendKeyEvent(keyboardId, 56, 0)
+    sleep 500
 }
 
 DetectCAPTCHA() {
@@ -115,33 +219,86 @@ DetectCAPTCHA() {
     return false
 }
 
-MoveCursorToImage(image, xOffset, yOffset){
-    ImageSearch, FoundX, FoundY, 0, 0, A_ScreenWidth, A_ScreenHeight, %image%
+CheckInventoryCell(image) {
+    ; Get current mouse position
+    MouseGetPos, currentX, currentY
+
+    cellSize := 40
+    searchLeft := currentX - cellSize//2
+    searchTop := currentY - cellSize//2
+    searchRight := currentX + cellSize//2
+    searchBottom := currentY + cellSize//2
+
+    ; Search for image in this area
+    ImageSearch, FoundX, FoundY, searchLeft, searchTop, searchRight, searchBottom, %image%
+
     if (ErrorLevel = 0) {
-        ; Image found, move the cursor
-        MouseMove, FoundX + xOffset, FoundY + yOffset
-    } else if (ErrorLevel = 1) {
-        MsgBox, Image was not found or an error occurred.
-        Pause, On
+        if(image == flywing_img){
+            ; Image found - move to next cell (right)
+            nextCellX := currentX + cellSize
+            nextCellY := currentY
+
+            ; Ensure we stay within inventory bounds
+            maxRight := A_ScreenWidth - cellSize//2
+            if (nextCellX > maxRight) {
+                nextCellX := cellSize//2 ; Wrap to first column
+                nextCellY += cellSize ; Move down one row
+            }
+            MouseMove, nextCellX, nextCellY, 0
+        }
+        return true
     }
+
+    ; Image not found in this cell
+    return false
 }
 
-SkillClick(KeySC){
+ItemsToStorage(){
+    Sleep 500
+    ManageInventoryWindow()
+    sleep 500
+    MoveCursorToImage(use_img,0,0)
+    Sleep 100
+    AHIclick()
+    SendKeyCombo(OpenStorageButtonKey)
+    MoveCursorToImage(cell1_img,0,40)
+    while(!CheckInventoryCell(empty_cell_img)){
+        CheckInventoryCell(flywing_img)
+        AltClicks(1)
+        sleep 50
+    }
+    sleep 100
+    MoveCursorToImage(eqp_img,0,0)
+    sleep 100
+    AHIclick()
     sleep 50
-    AHI.SendKeyEvent(keyboardId, KeySC, 1)
-    sleep 50
-    AHI.SendKeyEvent(keyboardId, KeySC, 0)
-    AHI.SendMouseButtonEvent(mouseId, 0, 1)
-    sleep 50
-    AHI.SendMouseButtonEvent(mouseId, 0, 0)
+    MoveCursorToImage(cell1_img,0,40)
+    while(!CheckInventoryCell(empty_cell_img)){
+        AltClicks(1)
+        sleep 50
+    }
+
+    MoveCursorToImage(etc_img,0,0)
+    sleep 100
+    AHIclick()
+    sleep 100
+    MoveCursorToImage(cell1_img,0,40)
+    while(!CheckInventoryCell(empty_cell_img)){
+        sleep 50
+        if(CheckImageOnScreen(ok_img)){
+            AHI.SendKeyEvent(keyboardId, 284, 1)
+            sleep 50
+            AHI.SendKeyEvent(keyboardId, 284, 0)
+            MouseGetPos, currentX, currentY
+            MouseMove, currentX+40, currentY, 0
+        }
+        AltClicks(1)
+    }
+    sleep 100
+    MoveCursorToImage(close_img,10,10)
+    sleep 100
+    AHIclick()
+    ManageInventoryWindow()
+    sleep 500
 }
 
-AltClicks(times){
-    Send {Alt down}
-    sleep 50
-    Loop, %times%{
-        click, right
-        sleep 500
-    }
-    Send {Alt up}
-}
