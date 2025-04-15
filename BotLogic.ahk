@@ -21,16 +21,10 @@ global totalWeight := 0
 global currentLocation := 0
 
 StartBot(){
-    InitializeMemoryOperations()
-    totalWeight := ReadMemoryUInt(gameProcess,totalWeightAddress)
-    ; Wait until critical variables are initialized
-    checkcount := 0
-    while ((currentLocation == 0 || maxSp == 0 || totalWeight == 0) && checkcount <= 10) { ; Wait max 10 checks
-        Sleep 100
-        checkcount++
-    }
+    totalWeight := ReadMemoryUInt(gameProcess, totalWeightAddress)
+    UpdateGameStats()
 
-    if (currentLocation == 0 || totalWeight == 0 || maxSp == 0) {
+    if (currentLocation == 0 || currentWeight == 0 || maxSp == 0) {
         MsgBox % "Failed to initialize game variables!`n"
         return false
     }
@@ -40,9 +34,9 @@ StartBot(){
     teleportSC := GetKeySC(TeleportButtonKey) + 0
     sleep 500
     while(botRunning) {
+        UpdateGameStats()
         if (!botRunning || botPaused) ; Double-check flag
             break
-        currentLocation := ReadMemoryUInt(gameProcess,currentLocationAddress)
         if(warperCoordsSet && (currentLocation == warperLocation)){ 
             MoveToTheMap(warperX, warperY)
         } 
@@ -66,6 +60,7 @@ Hunt(skillSC, teleportSC) {
     }
 
     while(botRunning && !botPaused) {
+        UpdateGameStats()
         if(DetectCAPTCHA()){
             botRunning := false
             break
@@ -73,12 +68,13 @@ Hunt(skillSC, teleportSC) {
         if (warperCoordsSet && SavePointButtonKey != "" && (A_TickCount - lastWarpTime) >= (TimeOnLocation * 1000)) {
             WarpToSavePoint()
             lastWarpTime := A_TickCount ; Reset timer
-            Sleep 2000 ; Brief pause after warp
+            Sleep 1000 ; Brief pause after warp
             break ; Restart hunting loop
         }
 
         if (WeightModifier >= 50 && currentWeight >= (totalWeight * WeightModifier / 100)) {
             ItemsToStorage()
+            currentWeight := ReadMemoryUInt(gameProcess,currentWeightAddress)
         }
 
         if(wingcount <= 0 && TakeFlyWings){

@@ -5,41 +5,30 @@ global currentWeightAddress := 0x010D94B0
 global totalWeightAddress := 0x010D94AC
 global currentLocationAddress := 0x010D856C
 
-; State control
-global botRunning := false
-global memoryOpsInitialized := false
 
-
-; Initialize timers
-InitializeMemoryOperations() {
-    if (memoryOpsInitialized)
-        return
-    
-    memoryOpsInitialized := true
-    UpdateGameStats()
-    SetTimer, CheckBotState, 300
-}
-
-CheckBotState() {
-    static lastBotState := false
-    
-    if (botRunning == lastBotState)
-        return
-    
-    if (botRunning) {
-        SetTimer, UpdateGameStats, 500
-    } else {
-        SetTimer, UpdateGameStats, Off
-    }
-    lastBotState := botRunning
-}
-
-UpdateGameStats(){
+UpdateGameStats() {
     Critical
+    ; Read memory values
     maxSp := ReadMemoryUInt(gameProcess, maxSpAddress)
     currentSp := ReadMemoryUInt(gameProcess, currentSpAddress)
     currentWeight := ReadMemoryUInt(gameProcess, currentWeightAddress)
     currentLocation := ReadMemoryUInt(gameProcess, currentLocationAddress)
+    
+    ; Get current mouse position
+    MouseGetPos, mouseX, mouseY
+    
+    ; Create the tooltip text with basic formatting
+    ToolTip, 
+    (
+    SP: %currentSp%/%maxSp%
+    Weight: %currentWeight%/%totalWeight%
+    Location: %currentLocation%
+    ), mouseX + 20, mouseY + 20
+    
+    ; Make tooltip disappear after 2 seconds
+    SetTimer, RemoveToolTip, -5000
+    return
+    
 }
 
 
