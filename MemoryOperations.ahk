@@ -13,22 +13,6 @@ UpdateGameStats() {
     currentSp := ReadMemoryUInt(gameProcess, currentSpAddress)
     currentWeight := ReadMemoryUInt(gameProcess, currentWeightAddress)
     currentLocation := ReadMemoryUInt(gameProcess, currentLocationAddress)
-    
-    ; Get current mouse position
-    MouseGetPos, mouseX, mouseY
-    
-    ; Create the tooltip text with basic formatting
-    ToolTip, 
-    (
-    SP: %currentSp%/%maxSp%
-    Weight: %currentWeight%/%totalWeight%
-    Location: %currentLocation%
-    ), mouseX + 20, mouseY + 20
-    
-    ; Make tooltip disappear after 2 seconds
-    SetTimer, RemoveToolTip, -5000
-    return
-    
 }
 
 
