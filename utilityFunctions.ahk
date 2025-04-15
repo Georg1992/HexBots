@@ -45,7 +45,7 @@ CheckImageOnScreen(image){
     return false
 }
 
-MoveCursorToImage(image, xOffset, yOffset){
+MoveCursorToImage(image, xOffset := 0, yOffset := 0){
     ImageSearch, FoundX, FoundY, 0, 0, A_ScreenWidth, A_ScreenHeight, %image%
     if (ErrorLevel = 0) {
         ; Image found, move the cursor

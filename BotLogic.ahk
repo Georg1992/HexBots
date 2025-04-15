@@ -65,13 +65,16 @@ Hunt(skillSC, teleportSC) {
         lastWarpTime := A_TickCount
     }
 
-
     while(botRunning && !botPaused) {
+        if(DetectCAPTCHA()){
+            botRunning := false
+            break
+        }
         if (warperCoordsSet && SavePointButtonKey != "" && (A_TickCount - lastWarpTime) >= (TimeOnLocation * 1000)) {
             WarpToSavePoint()
-            lastWarpTime := A_TickCount  ; Reset timer
+            lastWarpTime := A_TickCount ; Reset timer
             Sleep 2000 ; Brief pause after warp
-            break  ; Restart hunting loop
+            break ; Restart hunting loop
         }
 
         if (WeightModifier >= 50 && currentWeight >= (totalWeight * WeightModifier / 100)) {
@@ -151,25 +154,31 @@ MoveToTheMap(posX, posY) {
     AHI.SendMouseButtonEvent(mouseId, 0, 0)
     Sleep 500
     Send {Enter}
-    
+
     Sleep 1500
 }
 
 WarpToSavePoint() {
     SendKeyCombo(SavePointButtonKey)
-    Sleep 2000  ; Wait for warp to complete
+    Sleep 2000 ; Wait for warp to complete
 }
 
 GetFlyWings() {
+    sleep 100
+    ManageInventoryWindow()
+    MoveCursorToImage(cell1_img,0,40)
     if !SendKeyCombo(OpenStorageButtonKey) {
         return false
     }
     Sleep 800
-    MoveCursorToImage(flywing_img,0,0)
-    sleep 50
-    AHI.SendMouseButtonEvent(mouseId, 0, 1)
+    if(CheckInventoryCell(flywing_img)){
+        AltClicks(1)
+
+    }
+    sleep 500
+    MoveCursorToImage(flywing_img)
     sleep 100
-    ManageInventoryWindow()
+    AHI.SendMouseButtonEvent(mouseId, 0, 1)
     sleep 100
     MoveCursorToImage(etc_img,100,20)
     AHI.SendMouseButtonEvent(mouseId, 0, 0)
@@ -177,9 +186,8 @@ GetFlyWings() {
     send %wingsTaken%
     sleep 200
     SendInput {Enter}
-
     ManageInventoryWindow()
-    MoveCursorToImage(close_img,0,0)
+    MoveCursorToImage(close_img)
     sleep 200
     AHI.SendMouseButtonEvent(mouseId, 0, 1)
     sleep 50
@@ -219,7 +227,7 @@ DetectCAPTCHA() {
     return false
 }
 
-CheckInventoryCell(image) {
+CheckInventoryCell(image, ignoreWing := true) {
     ; Get current mouse position
     MouseGetPos, currentX, currentY
 
@@ -233,7 +241,7 @@ CheckInventoryCell(image) {
     ImageSearch, FoundX, FoundY, searchLeft, searchTop, searchRight, searchBottom, %image%
 
     if (ErrorLevel = 0) {
-        if(image == flywing_img){
+        if(image == flywing_img && ignoreWing == false){
             ; Image found - move to next cell (right)
             nextCellX := currentX + cellSize
             nextCellY := currentY
@@ -257,18 +265,18 @@ ItemsToStorage(){
     Sleep 500
     ManageInventoryWindow()
     sleep 500
-    MoveCursorToImage(use_img,0,0)
+    MoveCursorToImage(use_img)
     Sleep 100
     AHIclick()
     SendKeyCombo(OpenStorageButtonKey)
     MoveCursorToImage(cell1_img,0,40)
     while(!CheckInventoryCell(empty_cell_img)){
-        CheckInventoryCell(flywing_img)
+        CheckInventoryCell(flywing_img, false)
         AltClicks(1)
         sleep 50
     }
     sleep 100
-    MoveCursorToImage(eqp_img,0,0)
+    MoveCursorToImage(eqp_img)
     sleep 100
     AHIclick()
     sleep 50
@@ -278,7 +286,7 @@ ItemsToStorage(){
         sleep 50
     }
 
-    MoveCursorToImage(etc_img,0,0)
+    MoveCursorToImage(etc_img)
     sleep 100
     AHIclick()
     sleep 100
