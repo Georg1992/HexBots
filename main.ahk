@@ -240,7 +240,7 @@ Loop % MobNames.MaxIndex() {
     Gui, Add, Button, x360 y%buttonStartY% w120 h40 gMainBotButton vBotButton, Start Bot
     Gui, Add, Button, x480 y%buttonStartY% w120 h40 gContinueBot vContinueButton Hidden, Continue
 
-    Gui, Show, w800 h800, Hex Bot
+    Gui, Show, w800 h900, Hex Bot
     GuiControl,, StatusLight, 100
     Gosub, RefreshWindows
     return
@@ -288,7 +288,7 @@ Loop % MobNames.MaxIndex() {
 
         RestoreWindow()
         ; Auto-pause when tabbing out
-        SetTimer, CheckWindowFocus, 500 ; Checks every 500ms
+        SetTimer, CheckWindowFocus, 300 ; Checks every 500ms
 
         ; Read hotkey inputs
         GuiControlGet, skillKey,, SkillButtonKey
