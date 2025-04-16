@@ -455,6 +455,8 @@ Loop % MobNames.MaxIndex() {
 
         ; Set the flag and clean up if invalid
         warperCoordsSet := (warperX != "" && warperY != "" && warperX != "ERROR" && warperY != "ERROR")
+
+        ; Only reset if coordinates are INVALID
         if (!warperCoordsSet) {
             warperX := ""
             warperY := ""

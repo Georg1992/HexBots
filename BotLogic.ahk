@@ -22,6 +22,7 @@ global currentLocation := 0
 
 StartBot(){
     totalWeight := ReadMemoryUInt(gameProcess, totalWeightAddress)
+
     UpdateGameStats()
 
     if (currentLocation == 0 || currentWeight == 0 || maxSp == 0) {
@@ -32,14 +33,16 @@ StartBot(){
     ZoomOut() 
     skillSC := GetKeySC(SkillButtonKey) + 0
     teleportSC := GetKeySC(TeleportButtonKey) + 0
-    sleep 500
     while(botRunning) {
-        UpdateGameStats()
         if (!botRunning || botPaused) ; Double-check flag
             break
+        if(SkillTimerButtonKey != ""){
+            SendKeyCombo(SkillTimerButtonKey)
+        }
         if(warperCoordsSet && (currentLocation == warperLocation)){ 
             MoveToTheMap(warperX, warperY)
         } 
+
         if(currentLocation != warperLocation){
             Hunt(skillSC, teleportSC) 
         }
@@ -48,15 +51,17 @@ StartBot(){
 }
 
 Hunt(skillSC, teleportSC) {
-    lastWarpTime := 0
+    static lastWarpTime := 0
+    static lastSkillTime := 0
     ws := SearchRange * cellSize
     hs := SearchRange * cellSize
     xs := A_ScreenWidth // 2 - ws // 2
     ys := A_ScreenHeight // 2 - hs // 2 
     ; Settings
     attackCount := 2 ; Number of skill uses per monster
-    if (lastWarpTime == 0){
+    if (lastWarpTime == 0) {
         lastWarpTime := A_TickCount
+        lastSkillTime := A_TickCount ; <-- NEW: Initialize skill timer
     }
 
     while(botRunning && !botPaused) {
@@ -65,6 +70,13 @@ Hunt(skillSC, teleportSC) {
             botRunning := false
             break
         }
+
+        if (SkillTimerButtonKey != "" && (A_TickCount - lastSkillTime) >= (SkillTimerInterval * 1000)) {
+            SendKeyCombo(SkillTimerButtonKey) ; <-- Trigger the skill
+            lastSkillTime := A_TickCount ; <-- Reset timer
+            Sleep 300 ; Brief delay after skill use
+        }
+
         if (warperCoordsSet && SavePointButtonKey != "" && (A_TickCount - lastWarpTime) >= (TimeOnLocation * 1000)) {
             WarpToSavePoint()
             lastWarpTime := A_TickCount ; Reset timer
@@ -150,13 +162,14 @@ MoveToTheMap(posX, posY) {
     AHI.SendMouseButtonEvent(mouseId, 0, 0)
     Sleep 500
     Send {Enter}
-
-    Sleep 1500
+    Sleep 2000
+    UpdateGameStats()
 }
 
 WarpToSavePoint() {
     SendKeyCombo(SavePointButtonKey)
     Sleep 2000 ; Wait for warp to complete
+    UpdateGameStats()
 }
 
 GetFlyWings() {
